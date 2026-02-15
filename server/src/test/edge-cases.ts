@@ -31,10 +31,10 @@ describe('edge cases', () => {
     fs.rmSync(projectDir, { recursive: true, force: true });
   });
 
-  test('get_session_context with no data returns empty message', async () => {
-    const result = await callTool(client, 'get_session_context');
+  test('get_context with no data returns empty message', async () => {
+    const result = await callTool(client, 'get_context');
     const text = getText(result);
-    assert.match(text, /No decisions or investigations/);
+    assert.match(text, /No decisions or problems/);
   });
 
   test('search_decisions with no query and no tags returns all', async () => {
@@ -81,84 +81,84 @@ describe('edge cases', () => {
     assert.match(getText(search), /quoted/);
   });
 
-  test('multiple investigations can be open simultaneously', async () => {
-    const inv1 = await callTool(client, 'start_investigation', {
+  test('multiple problems can be open simultaneously', async () => {
+    const p1 = await callTool(client, 'open_problem', {
       problem: 'Problem Alpha',
     });
-    const id1 = getText(inv1).match(/ID: (.+)/)![1];
+    const id1 = getText(p1).match(/ID: (.+)/)![1];
 
-    const inv2 = await callTool(client, 'start_investigation', {
+    const p2 = await callTool(client, 'open_problem', {
       problem: 'Problem Beta',
     });
-    const id2 = getText(inv2).match(/ID: (.+)/)![1];
+    const id2 = getText(p2).match(/ID: (.+)/)![1];
 
-    // Log attempts to both
-    await callTool(client, 'log_attempt', {
-      investigation_id: id1,
+    // Log approaches to both
+    await callTool(client, 'log_approach', {
+      problem_id: id1,
       approach: 'Alpha approach 1',
       outcome: 'failed',
       details: 'Did not work',
     });
 
-    await callTool(client, 'log_attempt', {
-      investigation_id: id2,
+    await callTool(client, 'log_approach', {
+      problem_id: id2,
       approach: 'Beta approach 1',
       outcome: 'succeeded',
       details: 'Worked great',
     });
 
     // Resolve only one
-    await callTool(client, 'resolve_investigation', {
-      investigation_id: id2,
+    await callTool(client, 'close_problem', {
+      problem_id: id2,
       resolution: 'Beta was easy',
     });
 
     // Session context should show both
-    const ctx = await callTool(client, 'get_session_context');
+    const ctx = await callTool(client, 'get_context');
     const text = getText(ctx);
     assert.match(text, /OPEN.*Problem Alpha/s);
     assert.match(text, /RESOLVED.*Problem Beta/s);
   });
 
-  test('list_investigations shows all and filters by status', async () => {
-    // Should have investigations from previous tests
-    const all = await callTool(client, 'list_investigations', {});
+  test('list_problems shows all and filters by status', async () => {
+    // Should have problems from previous tests
+    const all = await callTool(client, 'list_problems', {});
     const allText = getText(all);
     assert.match(allText, /Problem Alpha/);
     assert.match(allText, /Problem Beta/);
 
-    const openOnly = await callTool(client, 'list_investigations', { status: 'open' });
+    const openOnly = await callTool(client, 'list_problems', { status: 'open' });
     const openText = getText(openOnly);
     assert.match(openText, /Problem Alpha/);
     assert.doesNotMatch(openText, /Problem Beta/);
 
-    const resolvedOnly = await callTool(client, 'list_investigations', { status: 'resolved' });
+    const resolvedOnly = await callTool(client, 'list_problems', { status: 'resolved' });
     const resolvedText = getText(resolvedOnly);
     assert.doesNotMatch(resolvedText, /Problem Alpha/);
     assert.match(resolvedText, /Problem Beta/);
   });
 
-  test('many attempts on one investigation', async () => {
-    const inv = await callTool(client, 'start_investigation', {
+  test('many approaches on one problem', async () => {
+    const prob = await callTool(client, 'open_problem', {
       problem: 'Flaky test',
     });
-    const id = getText(inv).match(/ID: (.+)/)![1];
+    const id = getText(prob).match(/ID: (.+)/)![1];
 
     for (let i = 1; i <= 5; i++) {
-      await callTool(client, 'log_attempt', {
-        investigation_id: id,
-        approach: `Attempt ${i}`,
+      await callTool(client, 'log_approach', {
+        problem_id: id,
+        approach: `Approach ${i}`,
         outcome: i === 5 ? 'succeeded' : 'failed',
-        details: `Details for attempt ${i}`,
+        details: `Details for approach ${i}`,
       });
     }
 
-    const result = await callTool(client, 'resolve_investigation', {
-      investigation_id: id,
+    const result = await callTool(client, 'close_problem', {
+      problem_id: id,
       resolution: 'Fifth time is the charm',
     });
     const text = getText(result);
-    assert.match(text, /Attempts: 5.*4 failed/);
+    assert.match(text, /Approaches: 5.*4 failed/);
   });
 });
 
@@ -186,9 +186,9 @@ describe('multi-session hook behavior', () => {
       session_id: oldSessionId, project_slug: projectSlug, cwd: tmpProject,
       started_at: '2025-01-01T00:00:00Z',
     }));
-    fs.writeFileSync(path.join(oldDir, 'investigations.json'), JSON.stringify([{
+    fs.writeFileSync(path.join(oldDir, 'problems.json'), JSON.stringify([{
       id: randomUUID(), session_id: oldSessionId, problem: 'OLD PROBLEM',
-      status: 'open', created_at: '2025-01-01T00:00:00Z', attempts: [],
+      status: 'open', created_at: '2025-01-01T00:00:00Z', approaches: [],
     }]));
 
     // Touch old metadata to have old mtime
@@ -200,9 +200,9 @@ describe('multi-session hook behavior', () => {
       session_id: newSessionId, project_slug: projectSlug, cwd: tmpProject,
       started_at: new Date().toISOString(),
     }));
-    fs.writeFileSync(path.join(newDir, 'investigations.json'), JSON.stringify([{
+    fs.writeFileSync(path.join(newDir, 'problems.json'), JSON.stringify([{
       id: randomUUID(), session_id: newSessionId, problem: 'NEW PROBLEM',
-      status: 'open', created_at: new Date().toISOString(), attempts: [],
+      status: 'open', created_at: new Date().toISOString(), approaches: [],
     }]));
 
     // Decisions

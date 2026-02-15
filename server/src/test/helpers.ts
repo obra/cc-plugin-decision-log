@@ -3,7 +3,7 @@ import * as path from 'node:path';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 
-const STORAGE_ROOT = path.join(process.env.HOME!, '.claude', 'session-memory');
+const STORAGE_ROOT = path.join(process.env.HOME!, '.claude', 'decision-log');
 const PLUGIN_ROOT = path.resolve(import.meta.dirname, '..', '..', '..');
 
 export { STORAGE_ROOT, PLUGIN_ROOT };

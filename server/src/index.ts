@@ -8,7 +8,7 @@ const sessionId = randomUUID();
 const cwd = process.cwd();
 
 const server = new McpServer({
-  name: 'session-memory',
+  name: 'decision-log',
   version: '0.1.0',
 });
 

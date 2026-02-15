@@ -57,7 +57,7 @@ export function runSessionStart() {
     output({
       continue: true,
       suppressOutput: true,
-      systemMessage: `Session memory: ${decisions.length} project decision(s) on record from prior sessions. Use search_decisions to query history.`,
+      systemMessage: `Decision log: ${decisions.length} project decision(s) on record from prior sessions. Use search_decisions to query history.`,
     });
   } catch {
     process.exit(0);
@@ -88,21 +88,21 @@ export function runPreCompact() {
 
   const lines: string[] = [];
 
-  // Investigations — full detail for open, summarized for resolved
-  const invPath = path.join(latestSessionDir, 'investigations.json');
-  if (fs.existsSync(invPath)) {
+  // Problems — full detail for open, summarized for resolved
+  const problemsPath = path.join(latestSessionDir, 'problems.json');
+  if (fs.existsSync(problemsPath)) {
     try {
-      const investigations = JSON.parse(fs.readFileSync(invPath, 'utf-8'));
-      if (Array.isArray(investigations) && investigations.length > 0) {
-        const open = investigations.filter((i: any) => i.status !== 'resolved');
-        const resolved = investigations.filter((i: any) => i.status === 'resolved');
+      const problems = JSON.parse(fs.readFileSync(problemsPath, 'utf-8'));
+      if (Array.isArray(problems) && problems.length > 0) {
+        const open = problems.filter((p: any) => p.status !== 'resolved');
+        const resolved = problems.filter((p: any) => p.status === 'resolved');
 
         if (open.length > 0) {
-          lines.push('OPEN INVESTIGATIONS:');
-          for (const inv of open) {
-            lines.push(`[OPEN] ${inv.problem}`);
-            if (Array.isArray(inv.attempts)) {
-              for (const a of inv.attempts) {
+          lines.push('OPEN PROBLEMS:');
+          for (const p of open) {
+            lines.push(`[OPEN] ${p.problem}`);
+            if (Array.isArray(p.approaches)) {
+              for (const a of p.approaches) {
                 const label = a.outcome === 'failed' ? 'FAILED' : 'SUCCEEDED';
                 const details = a.details.length > 120
                   ? a.details.slice(0, 120) + '...'
@@ -115,19 +115,19 @@ export function runPreCompact() {
         }
 
         if (resolved.length > 0) {
-          lines.push('RESOLVED INVESTIGATIONS:');
-          for (const inv of resolved) {
-            const failCount = Array.isArray(inv.attempts)
-              ? inv.attempts.filter((a: any) => a.outcome === 'failed').length
+          lines.push('RESOLVED PROBLEMS:');
+          for (const p of resolved) {
+            const failCount = Array.isArray(p.approaches)
+              ? p.approaches.filter((a: any) => a.outcome === 'failed').length
               : 0;
-            const suffix = failCount > 0 ? ` (${failCount} failed attempt${failCount > 1 ? 's' : ''})` : '';
-            lines.push(`- ${inv.problem} → ${inv.resolution || 'resolved'}${suffix}`);
+            const suffix = failCount > 0 ? ` (${failCount} failed approach${failCount > 1 ? 'es' : ''})` : '';
+            lines.push(`- ${p.problem} → ${p.resolution || 'resolved'}${suffix}`);
           }
           lines.push('');
         }
       }
     } catch {
-      // skip malformed investigations
+      // skip malformed problems
     }
   }
 
@@ -166,7 +166,7 @@ export function runPreCompact() {
   if (lines.length === 0) process.exit(0);
 
   const message = [
-    'SESSION MEMORY (preserved through compaction) — use get_session_context for full details.',
+    'DECISION LOG (preserved through compaction) — use get_context for full details.',
     '',
     ...lines,
   ].join('\n');

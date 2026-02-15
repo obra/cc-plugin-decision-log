@@ -1,7 +1,7 @@
 {
-  "name": "session-memory",
+  "name": "decision-log",
   "version": "0.1.0",
-  "description": "Structured session memory — logs decisions and investigations to survive context compaction",
+  "description": "Logs decisions and problem-solving approaches to survive context compaction",
   "author": {
     "name": "Prime Radiant",
     "email": "eng@primeradiant.ai"

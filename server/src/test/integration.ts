@@ -11,7 +11,7 @@ const tmpDir = fs.mkdtempSync(path.join(import.meta.dirname, '.test-project-'));
 let client: Client;
 let transport: StdioClientTransport;
 
-describe('session-memory MCP server', () => {
+describe('decision-log MCP server', () => {
   before(async () => {
     transport = new StdioClientTransport({
       command: 'node',
@@ -32,13 +32,13 @@ describe('session-memory MCP server', () => {
     const tools = await client.listTools();
     const names = tools.tools.map((t) => t.name).sort();
     assert.deepEqual(names, [
-      'get_session_context',
-      'list_investigations',
-      'log_attempt',
+      'close_problem',
+      'get_context',
+      'list_problems',
+      'log_approach',
       'log_decision',
-      'resolve_investigation',
+      'open_problem',
       'search_decisions',
-      'start_investigation',
     ]);
   });
 
@@ -72,19 +72,19 @@ describe('session-memory MCP server', () => {
     assert.match(result, /No matching decisions/);
   });
 
-  let investigationId: string;
+  let problemId: string;
 
-  test('start_investigation creates an investigation', async () => {
-    const result = text(await callTool(client, 'start_investigation', {
+  test('open_problem creates a problem', async () => {
+    const result = text(await callTool(client, 'open_problem', {
       problem: 'Auth tests failing with 401',
     }));
-    assert.match(result, /Investigation started.*Auth tests failing/);
-    investigationId = result.match(/ID: (.+)/)![1];
+    assert.match(result, /Problem opened.*Auth tests failing/);
+    problemId = result.match(/ID: (.+)/)![1];
   });
 
-  test('log_attempt records a failed approach', async () => {
-    const result = text(await callTool(client, 'log_attempt', {
-      investigation_id: investigationId,
+  test('log_approach records a failed approach', async () => {
+    const result = text(await callTool(client, 'log_approach', {
+      problem_id: problemId,
       approach: 'Mock the auth middleware',
       outcome: 'failed',
       details: 'Tests passed but did not catch the real bug',
@@ -92,9 +92,9 @@ describe('session-memory MCP server', () => {
     assert.match(result, /FAILED.*Mock the auth middleware/);
   });
 
-  test('log_attempt records a successful approach', async () => {
-    const result = text(await callTool(client, 'log_attempt', {
-      investigation_id: investigationId,
+  test('log_approach records a successful approach', async () => {
+    const result = text(await callTool(client, 'log_approach', {
+      problem_id: problemId,
       approach: 'Use real auth flow with test database',
       outcome: 'succeeded',
       details: 'Found the token validation was checking wrong claim',
@@ -102,9 +102,9 @@ describe('session-memory MCP server', () => {
     assert.match(result, /SUCCEEDED.*Use real auth flow/);
   });
 
-  test('log_attempt rejects invalid investigation_id', async () => {
-    const result = await callTool(client, 'log_attempt', {
-      investigation_id: 'nonexistent-id',
+  test('log_approach rejects invalid problem_id', async () => {
+    const result = await callTool(client, 'log_approach', {
+      problem_id: 'nonexistent-id',
       approach: 'Whatever',
       outcome: 'failed',
       details: 'Should not work',
@@ -113,25 +113,25 @@ describe('session-memory MCP server', () => {
     assert.match(text(result), /not found/);
   });
 
-  test('resolve_investigation marks it resolved', async () => {
-    const result = text(await callTool(client, 'resolve_investigation', {
-      investigation_id: investigationId,
+  test('close_problem marks it resolved', async () => {
+    const result = text(await callTool(client, 'close_problem', {
+      problem_id: problemId,
       resolution: 'Token validation was checking sub claim instead of user_id. Fixed in auth.ts.',
     }));
-    assert.match(result, /resolved.*Auth tests failing/);
+    assert.match(result, /closed.*Auth tests failing/);
     assert.match(result, /2.*1 failed/);
   });
 
-  test('resolve_investigation rejects invalid id', async () => {
-    const result = await callTool(client, 'resolve_investigation', {
-      investigation_id: 'nonexistent',
+  test('close_problem rejects invalid id', async () => {
+    const result = await callTool(client, 'close_problem', {
+      problem_id: 'nonexistent',
       resolution: 'whatever',
     });
     assert.ok(result.isError);
   });
 
-  test('get_session_context returns full session state', async () => {
-    const result = text(await callTool(client, 'get_session_context'));
+  test('get_context returns full session state', async () => {
+    const result = text(await callTool(client, 'get_context'));
     assert.match(result, /RESOLVED.*Auth tests failing/);
     assert.match(result, /FAILED.*Mock the auth middleware/);
     assert.match(result, /SUCCEEDED.*Use real auth flow/);

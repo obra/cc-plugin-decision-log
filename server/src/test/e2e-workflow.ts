@@ -57,30 +57,30 @@ describe('E2E: realistic debugging session workflow', () => {
       tags: ['architecture', 'storage'],
     });
 
-    const ctx = text(await callTool(client, 'get_session_context'));
+    const ctx = text(await callTool(client, 'get_context'));
     assert.match(ctx, /API framework.*Express/);
     assert.match(ctx, /Session storage.*SQLite/);
   });
 
   // Phase 2: Hit a bug, investigate
-  let authInvId: string;
+  let authProblemId: string;
   test('Phase 2: Start investigating auth bug', async () => {
-    const result = text(await callTool(client, 'start_investigation', {
+    const result = text(await callTool(client, 'open_problem', {
       problem: 'Login endpoint returns 500 after session middleware added',
     }));
-    authInvId = result.match(/ID: (.+)/)![1];
+    authProblemId = result.match(/ID: (.+)/)![1];
 
-    // First attempt: check middleware order
-    await callTool(client, 'log_attempt', {
-      investigation_id: authInvId,
+    // First approach: check middleware order
+    await callTool(client, 'log_approach', {
+      problem_id: authProblemId,
       approach: 'Reorder middleware — move session before auth',
       outcome: 'failed',
       details: 'Same 500 error. Stack trace points to session.save() callback',
     });
 
-    // Second attempt: check SQLite config
-    await callTool(client, 'log_attempt', {
-      investigation_id: authInvId,
+    // Second approach: check SQLite config
+    await callTool(client, 'log_approach', {
+      problem_id: authProblemId,
       approach: 'Check SQLite WAL mode and connection pooling',
       outcome: 'failed',
       details: 'WAL mode enabled, single connection — not a concurrency issue',
@@ -88,37 +88,37 @@ describe('E2E: realistic debugging session workflow', () => {
   });
 
   // Phase 3: Second bug appears while investigating first
-  let cssInvId: string;
-  test('Phase 3: Second bug appears, open parallel investigation', async () => {
-    const result = text(await callTool(client, 'start_investigation', {
+  let cssProblemId: string;
+  test('Phase 3: Second bug appears, open parallel problem', async () => {
+    const result = text(await callTool(client, 'open_problem', {
       problem: 'Dashboard layout broken after Tailwind upgrade to v4',
     }));
-    cssInvId = result.match(/ID: (.+)/)![1];
+    cssProblemId = result.match(/ID: (.+)/)![1];
 
-    await callTool(client, 'log_attempt', {
-      investigation_id: cssInvId,
+    await callTool(client, 'log_approach', {
+      problem_id: cssProblemId,
       approach: 'Replace deprecated @apply directives',
       outcome: 'succeeded',
       details: 'Tailwind v4 changed @apply syntax. Replaced 12 occurrences.',
     });
 
-    await callTool(client, 'resolve_investigation', {
-      investigation_id: cssInvId,
+    await callTool(client, 'close_problem', {
+      problem_id: cssProblemId,
       resolution: 'Tailwind v4 @apply syntax changed — find-and-replace across 4 files',
     });
   });
 
-  // Phase 4: Continue auth investigation
+  // Phase 4: Continue auth problem
   test('Phase 4: Resolve auth bug', async () => {
-    await callTool(client, 'log_attempt', {
-      investigation_id: authInvId,
+    await callTool(client, 'log_approach', {
+      problem_id: authProblemId,
       approach: 'Add error handler to session.save() callback',
       outcome: 'succeeded',
       details: 'Session store was throwing because sessions table schema was wrong — missing expires column',
     });
 
-    await callTool(client, 'resolve_investigation', {
-      investigation_id: authInvId,
+    await callTool(client, 'close_problem', {
+      problem_id: authProblemId,
       resolution: 'Sessions table missing expires column. Migration was incomplete.',
     });
   });
@@ -130,27 +130,27 @@ describe('E2E: realistic debugging session workflow', () => {
     const msg = parsed.systemMessage;
 
     // Header
-    assert.match(msg, /SESSION MEMORY.*preserved through compaction/);
+    assert.match(msg, /DECISION LOG.*preserved through compaction/);
 
-    // Both investigations should be in RESOLVED section (summarized)
-    assert.match(msg, /RESOLVED INVESTIGATIONS/);
+    // Both problems should be in RESOLVED section (summarized)
+    assert.match(msg, /RESOLVED PROBLEMS/);
     assert.match(msg, /Login endpoint.*Sessions table missing expires/);
     assert.match(msg, /Dashboard layout.*Tailwind v4 @apply/);
-    // Auth bug had 2 failed attempts
-    assert.match(msg, /2 failed attempt/);
+    // Auth bug had 2 failed approaches
+    assert.match(msg, /2 failed approach/);
 
     // Decisions
     assert.match(msg, /DECISIONS THIS SESSION/);
     assert.match(msg, /API framework.*Express/);
     assert.match(msg, /Session storage.*SQLite/);
 
-    // No open investigations
-    assert.doesNotMatch(msg, /OPEN INVESTIGATIONS/);
+    // No open problems
+    assert.doesNotMatch(msg, /OPEN PROBLEMS/);
   });
 
-  // Phase 6: After compaction — simulate recovery with get_session_context
-  test('Phase 6: Post-compaction recovery via get_session_context', async () => {
-    const ctx = text(await callTool(client, 'get_session_context'));
+  // Phase 6: After compaction — simulate recovery with get_context
+  test('Phase 6: Post-compaction recovery via get_context', async () => {
+    const ctx = text(await callTool(client, 'get_context'));
 
     // Should still have all the data (MCP server is still running, data is on disk)
     assert.match(ctx, /RESOLVED.*Login endpoint/);
@@ -179,16 +179,16 @@ describe('E2E: realistic debugging session workflow', () => {
     assert.match(apiSearch, /API framework/);
   });
 
-  // Phase 8: List investigations with status filter
-  test('Phase 8: List investigations shows all resolved', async () => {
-    const all = text(await callTool(client, 'list_investigations', {}));
-    assert.match(all, /2 investigation/);
+  // Phase 8: List problems with status filter
+  test('Phase 8: List problems shows all resolved', async () => {
+    const all = text(await callTool(client, 'list_problems', {}));
+    assert.match(all, /2 problem/);
 
-    const open = text(await callTool(client, 'list_investigations', { status: 'open' }));
-    assert.match(open, /No investigations found/);
+    const open = text(await callTool(client, 'list_problems', { status: 'open' }));
+    assert.match(open, /No problems found/);
 
-    const resolved = text(await callTool(client, 'list_investigations', { status: 'resolved' }));
-    assert.match(resolved, /2 investigation/);
+    const resolved = text(await callTool(client, 'list_problems', { status: 'resolved' }));
+    assert.match(resolved, /2 problem/);
   });
 });
 
@@ -237,8 +237,8 @@ describe('E2E: cross-session decision persistence', () => {
     assert.match(search, /ORM choice/);
     assert.match(search, /Drizzle/);
 
-    // get_session_context should show it as "from prior sessions"
-    const ctx = text(await callTool(client2, 'get_session_context'));
+    // get_context should show it as "from prior sessions"
+    const ctx = text(await callTool(client2, 'get_context'));
     assert.match(ctx, /1 additional project decision.*prior sessions/);
 
     // SessionStart hook should report it

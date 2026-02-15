@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { getProjectSlug, STORAGE_ROOT } from './project-slug.js';
-import type { Decision, Investigation, SessionMetadata } from './types.js';
+import type { Decision, Problem, SessionMetadata } from './types.js';
 
 export class Storage {
   private projectSlug: string;
@@ -77,45 +77,45 @@ export class Storage {
     });
   }
 
-  // --- Investigations (session-level) ---
+  // --- Problems (session-level) ---
 
-  private investigationsPath(): string {
-    return path.join(this.sessionDir, 'investigations.json');
+  private problemsPath(): string {
+    return path.join(this.sessionDir, 'problems.json');
   }
 
-  readInvestigations(): Investigation[] {
+  readProblems(): Problem[] {
     try {
       return JSON.parse(
-        fs.readFileSync(this.investigationsPath(), 'utf-8')
+        fs.readFileSync(this.problemsPath(), 'utf-8')
       );
     } catch {
       return [];
     }
   }
 
-  private writeInvestigations(investigations: Investigation[]): void {
+  private writeProblems(problems: Problem[]): void {
     fs.writeFileSync(
-      this.investigationsPath(),
-      JSON.stringify(investigations, null, 2)
+      this.problemsPath(),
+      JSON.stringify(problems, null, 2)
     );
   }
 
-  addInvestigation(investigation: Investigation): void {
-    const investigations = this.readInvestigations();
-    investigations.push(investigation);
-    this.writeInvestigations(investigations);
+  addProblem(problem: Problem): void {
+    const problems = this.readProblems();
+    problems.push(problem);
+    this.writeProblems(problems);
   }
 
-  updateInvestigation(id: string, updater: (inv: Investigation) => void): Investigation | null {
-    const investigations = this.readInvestigations();
-    const inv = investigations.find((i) => i.id === id);
-    if (!inv) return null;
-    updater(inv);
-    this.writeInvestigations(investigations);
-    return inv;
+  updateProblem(id: string, updater: (p: Problem) => void): Problem | null {
+    const problems = this.readProblems();
+    const p = problems.find((p) => p.id === id);
+    if (!p) return null;
+    updater(p);
+    this.writeProblems(problems);
+    return p;
   }
 
-  getInvestigation(id: string): Investigation | null {
-    return this.readInvestigations().find((i) => i.id === id) ?? null;
+  getProblem(id: string): Problem | null {
+    return this.readProblems().find((p) => p.id === id) ?? null;
   }
 }

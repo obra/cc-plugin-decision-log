@@ -42,12 +42,12 @@ describe('hook scripts', () => {
       },
     ]));
 
-    fs.writeFileSync(path.join(sessionDir, 'investigations.json'), JSON.stringify([
+    fs.writeFileSync(path.join(sessionDir, 'problems.json'), JSON.stringify([
       {
         id: randomUUID(), session_id: sessionId,
         problem: 'Auth middleware returning 401', status: 'open',
         created_at: new Date().toISOString(),
-        attempts: [{
+        approaches: [{
           approach: 'Check token expiry logic', outcome: 'failed',
           details: 'Tokens were valid, issue is elsewhere', timestamp: new Date().toISOString(),
         }],
@@ -56,7 +56,7 @@ describe('hook scripts', () => {
         id: randomUUID(), session_id: sessionId,
         problem: 'CSS grid layout broken on mobile', status: 'resolved',
         created_at: new Date().toISOString(),
-        attempts: [{
+        approaches: [{
           approach: 'Add media query for small screens', outcome: 'succeeded',
           details: 'Grid switched to single column below 640px', timestamp: new Date().toISOString(),
         }],
@@ -82,21 +82,21 @@ describe('hook scripts', () => {
     assert.equal(output, '');
   });
 
-  test('pre-compact.sh outputs investigation and decision summary', () => {
+  test('pre-compact.sh outputs problem and decision summary', () => {
     const output = runHook('pre-compact.sh', { cwd: tmpProject });
     const parsed = JSON.parse(output);
     assert.equal(parsed.continue, true);
     assert.equal(parsed.suppressOutput, true);
 
     const msg = parsed.systemMessage;
-    // Open investigations shown in detail
-    assert.match(msg, /OPEN INVESTIGATIONS/);
+    // Open problems shown in detail
+    assert.match(msg, /OPEN PROBLEMS/);
     assert.match(msg, /Auth middleware/);
     assert.match(msg, /FAILED/i);
     assert.match(msg, /Check token expiry/);
 
-    // Resolved investigations shown as summaries
-    assert.match(msg, /RESOLVED INVESTIGATIONS/);
+    // Resolved problems shown as summaries
+    assert.match(msg, /RESOLVED PROBLEMS/);
     assert.match(msg, /CSS grid/);
 
     // Should mention this session's decision

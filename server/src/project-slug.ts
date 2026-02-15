@@ -9,7 +9,7 @@ function shortHash(input: string): string {
 export const STORAGE_ROOT = path.join(
   process.env.HOME || process.env.USERPROFILE || '/tmp',
   '.claude',
-  'session-memory'
+  'decision-log'
 );
 
 export function getProjectSlug(cwd: string): string {

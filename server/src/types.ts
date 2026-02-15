@@ -9,20 +9,20 @@ export interface Decision {
   tags: string[];
 }
 
-export interface Attempt {
+export interface Approach {
   approach: string;
   outcome: 'failed' | 'succeeded';
   details: string;
   timestamp: string;
 }
 
-export interface Investigation {
+export interface Problem {
   id: string;
   session_id: string;
   problem: string;
   status: 'open' | 'resolved';
   created_at: string;
-  attempts: Attempt[];
+  approaches: Approach[];
   resolution?: string;
 }
 

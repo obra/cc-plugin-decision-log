@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { randomUUID } from 'node:crypto';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { Storage } from './storage.js';
-import type { Decision, Investigation } from './types.js';
+import type { Decision, Problem } from './types.js';
 
 const OptionSchema = z.object({
   name: z.string(),
@@ -44,26 +44,26 @@ export function registerTools(server: McpServer, storage: Storage, sessionId: st
   );
 
   server.tool(
-    'start_investigation',
-    'Start tracking a problem you are investigating. Returns an investigation ID to use with log_attempt.',
+    'open_problem',
+    'Begin tracking approaches to a problem. After calling this, use log_approach for EVERY approach you try — this prevents retrying dead ends after compaction.',
     {
       problem: z.string().describe('Description of the problem being investigated'),
     },
     async (args) => {
-      const investigation: Investigation = {
+      const problem: Problem = {
         id: randomUUID(),
         session_id: sessionId,
         problem: args.problem,
         status: 'open',
         created_at: new Date().toISOString(),
-        attempts: [],
+        approaches: [],
       };
-      storage.addInvestigation(investigation);
+      storage.addProblem(problem);
       return {
         content: [
           {
             type: 'text' as const,
-            text: `Investigation started: "${args.problem}"\nID: ${investigation.id}`,
+            text: `Problem opened: "${args.problem}"\nID: ${problem.id}`,
           },
         ],
       };
@@ -71,29 +71,29 @@ export function registerTools(server: McpServer, storage: Storage, sessionId: st
   );
 
   server.tool(
-    'log_attempt',
-    'Log a failed or succeeded approach to an open investigation.',
+    'log_approach',
+    'Record a failed or successful approach to an open problem. Call this after each attempt, before trying the next one. Logging failures is critical — they prevent wasted effort if context gets compacted.',
     {
-      investigation_id: z.string().describe('ID from start_investigation'),
+      problem_id: z.string().describe('ID from open_problem'),
       approach: z.string().describe('What approach was tried'),
       outcome: z.enum(['failed', 'succeeded']).describe('Whether the approach failed or succeeded'),
       details: z.string().describe('What happened — error messages, why it failed, what worked'),
     },
     async (args) => {
-      const inv = storage.updateInvestigation(args.investigation_id, (inv) => {
-        inv.attempts.push({
+      const p = storage.updateProblem(args.problem_id, (p) => {
+        p.approaches.push({
           approach: args.approach,
           outcome: args.outcome,
           details: args.details,
           timestamp: new Date().toISOString(),
         });
       });
-      if (!inv) {
+      if (!p) {
         return {
           content: [
             {
               type: 'text' as const,
-              text: `Investigation not found: ${args.investigation_id}`,
+              text: `Problem not found: ${args.problem_id}`,
             },
           ],
           isError: true,
@@ -104,7 +104,7 @@ export function registerTools(server: McpServer, storage: Storage, sessionId: st
         content: [
           {
             type: 'text' as const,
-            text: `Attempt logged [${label}]: ${args.approach} (investigation: ${inv.problem})`,
+            text: `Approach logged [${label}]: ${args.approach} (problem: ${p.problem})`,
           },
         ],
       };
@@ -112,23 +112,23 @@ export function registerTools(server: McpServer, storage: Storage, sessionId: st
   );
 
   server.tool(
-    'resolve_investigation',
-    'Mark an investigation as resolved with a summary of what worked.',
+    'close_problem',
+    'Mark a problem as solved. Summarize what finally worked and why.',
     {
-      investigation_id: z.string().describe('ID from start_investigation'),
+      problem_id: z.string().describe('ID from open_problem'),
       resolution: z.string().describe('Summary of the resolution — what finally worked and why'),
     },
     async (args) => {
-      const inv = storage.updateInvestigation(args.investigation_id, (inv) => {
-        inv.status = 'resolved';
-        inv.resolution = args.resolution;
+      const p = storage.updateProblem(args.problem_id, (p) => {
+        p.status = 'resolved';
+        p.resolution = args.resolution;
       });
-      if (!inv) {
+      if (!p) {
         return {
           content: [
             {
               type: 'text' as const,
-              text: `Investigation not found: ${args.investigation_id}`,
+              text: `Problem not found: ${args.problem_id}`,
             },
           ],
           isError: true,
@@ -138,7 +138,7 @@ export function registerTools(server: McpServer, storage: Storage, sessionId: st
         content: [
           {
             type: 'text' as const,
-            text: `Investigation resolved: "${inv.problem}"\nResolution: ${args.resolution}\nAttempts: ${inv.attempts.length} (${inv.attempts.filter((a) => a.outcome === 'failed').length} failed)`,
+            text: `Problem closed: "${p.problem}"\nResolution: ${args.resolution}\nApproaches: ${p.approaches.length} (${p.approaches.filter((a) => a.outcome === 'failed').length} failed)`,
           },
         ],
       };
@@ -146,28 +146,28 @@ export function registerTools(server: McpServer, storage: Storage, sessionId: st
   );
 
   server.tool(
-    'get_session_context',
-    'Get all session state — decisions made and investigations (open and resolved). Use after context compaction to reload working memory.',
+    'get_context',
+    'Get all session state — decisions and problems (open and resolved). Use after context compaction to reload working memory.',
     {},
     async () => {
       const decisions = storage.readDecisions().filter(
         (d) => d.session_id === sessionId
       );
-      const investigations = storage.readInvestigations();
+      const problems = storage.readProblems();
 
       const parts: string[] = [];
 
-      if (investigations.length > 0) {
-        parts.push('## Investigations\n');
-        for (const inv of investigations) {
-          const status = inv.status === 'open' ? 'OPEN' : 'RESOLVED';
-          parts.push(`### [${status}] ${inv.problem}`);
-          for (const a of inv.attempts) {
+      if (problems.length > 0) {
+        parts.push('## Problems\n');
+        for (const p of problems) {
+          const status = p.status === 'open' ? 'OPEN' : 'RESOLVED';
+          parts.push(`### [${status}] ${p.problem}`);
+          for (const a of p.approaches) {
             const label = a.outcome === 'failed' ? 'FAILED' : 'SUCCEEDED';
             parts.push(`- ${label}: ${a.approach} — ${a.details}`);
           }
-          if (inv.resolution) {
-            parts.push(`- RESOLUTION: ${inv.resolution}`);
+          if (p.resolution) {
+            parts.push(`- RESOLUTION: ${p.resolution}`);
           }
           parts.push('');
         }
@@ -192,44 +192,44 @@ export function registerTools(server: McpServer, storage: Storage, sessionId: st
       const text =
         parts.length > 0
           ? parts.join('\n')
-          : 'No decisions or investigations recorded in this session yet.';
+          : 'No decisions or problems recorded in this session yet.';
 
       return { content: [{ type: 'text' as const, text }] };
     }
   );
 
   server.tool(
-    'list_investigations',
-    'List all investigations in the current session, optionally filtered by status.',
+    'list_problems',
+    'List all problems in the current session, optionally filtered by status.',
     {
       status: z.enum(['open', 'resolved', 'all']).optional().describe('Filter by status (default: all)'),
     },
     async (args) => {
-      let investigations = storage.readInvestigations();
+      let problems = storage.readProblems();
       if (args.status && args.status !== 'all') {
-        investigations = investigations.filter((i) => i.status === args.status);
+        problems = problems.filter((p) => p.status === args.status);
       }
 
-      if (investigations.length === 0) {
+      if (problems.length === 0) {
         return {
-          content: [{ type: 'text' as const, text: 'No investigations found.' }],
+          content: [{ type: 'text' as const, text: 'No problems found.' }],
         };
       }
 
-      const lines = investigations.map((inv) => {
-        const status = inv.status === 'open' ? 'OPEN' : 'RESOLVED';
-        const attemptCount = inv.attempts.length;
-        const failCount = inv.attempts.filter((a) => a.outcome === 'failed').length;
-        const summary = inv.resolution
-          ? ` → ${inv.resolution}`
-          : ` (${attemptCount} attempt${attemptCount !== 1 ? 's' : ''}, ${failCount} failed)`;
-        return `- [${status}] ${inv.problem}${summary} [id: ${inv.id}]`;
+      const lines = problems.map((p) => {
+        const status = p.status === 'open' ? 'OPEN' : 'RESOLVED';
+        const approachCount = p.approaches.length;
+        const failCount = p.approaches.filter((a) => a.outcome === 'failed').length;
+        const summary = p.resolution
+          ? ` → ${p.resolution}`
+          : ` (${approachCount} approach${approachCount !== 1 ? 'es' : ''}, ${failCount} failed)`;
+        return `- [${status}] ${p.problem}${summary} [id: ${p.id}]`;
       });
 
       return {
         content: [{
           type: 'text' as const,
-          text: `${investigations.length} investigation(s):\n\n${lines.join('\n')}`,
+          text: `${problems.length} problem(s):\n\n${lines.join('\n')}`,
         }],
       };
     }
