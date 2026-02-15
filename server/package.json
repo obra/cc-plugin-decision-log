@@ -1,5 +1,5 @@
 {
-  "name": "session-memory-server",
+  "name": "decision-log-server",
   "version": "0.1.0",
   "private": true,
   "type": "module",
