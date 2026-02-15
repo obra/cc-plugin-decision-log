@@ -1,4 +1,4 @@
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
 declare const STORAGE_ROOT: string;
 declare const PLUGIN_ROOT: string;
 export { STORAGE_ROOT, PLUGIN_ROOT };

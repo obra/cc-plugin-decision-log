@@ -1,5 +1,5 @@
-import { z } from 'zod';
 import { randomUUID } from 'node:crypto';
+import { z } from 'zod';
 const OptionSchema = z.object({
     name: z.string(),
     description: z.string(),
@@ -10,7 +10,10 @@ export function registerTools(server, storage, sessionId) {
         options: z.array(OptionSchema).describe('Options that were considered'),
         chosen: z.string().describe('Which option was chosen'),
         rationale: z.string().describe('Why this option was chosen'),
-        tags: z.array(z.string()).optional().describe('Tags for categorization (e.g. "auth", "architecture")'),
+        tags: z
+            .array(z.string())
+            .optional()
+            .describe('Tags for categorization (e.g. "auth", "architecture")'),
     }, async (args) => {
         const decision = {
             id: randomUUID(),
@@ -33,7 +36,9 @@ export function registerTools(server, storage, sessionId) {
         };
     });
     server.tool('open_problem', 'Begin tracking approaches to a problem. After calling this, use log_approach for EVERY approach you try — this prevents retrying dead ends after compaction.', {
-        problem: z.string().describe('Description of the problem being investigated'),
+        problem: z
+            .string()
+            .describe('Description of the problem being investigated'),
     }, async (args) => {
         const problem = {
             id: randomUUID(),
@@ -56,8 +61,12 @@ export function registerTools(server, storage, sessionId) {
     server.tool('log_approach', 'Record a failed or successful approach to an open problem. Call this after each attempt, before trying the next one. Logging failures is critical — they prevent wasted effort if context gets compacted.', {
         problem_id: z.string().describe('ID from open_problem'),
         approach: z.string().describe('What approach was tried'),
-        outcome: z.enum(['failed', 'succeeded']).describe('Whether the approach failed or succeeded'),
-        details: z.string().describe('What happened — error messages, why it failed, what worked'),
+        outcome: z
+            .enum(['failed', 'succeeded'])
+            .describe('Whether the approach failed or succeeded'),
+        details: z
+            .string()
+            .describe('What happened — error messages, why it failed, what worked'),
     }, async (args) => {
         const p = storage.updateProblem(args.problem_id, (p) => {
             p.approaches.push({
@@ -90,7 +99,9 @@ export function registerTools(server, storage, sessionId) {
     });
     server.tool('close_problem', 'Mark a problem as solved. Summarize what finally worked and why.', {
         problem_id: z.string().describe('ID from open_problem'),
-        resolution: z.string().describe('Summary of the resolution — what finally worked and why'),
+        resolution: z
+            .string()
+            .describe('Summary of the resolution — what finally worked and why'),
     }, async (args) => {
         const p = storage.updateProblem(args.problem_id, (p) => {
             p.status = 'resolved';
@@ -117,7 +128,9 @@ export function registerTools(server, storage, sessionId) {
         };
     });
     server.tool('get_context', 'Get all session state — decisions and problems (open and resolved). Use after context compaction to reload working memory.', {}, async () => {
-        const decisions = storage.readDecisions().filter((d) => d.session_id === sessionId);
+        const decisions = storage
+            .readDecisions()
+            .filter((d) => d.session_id === sessionId);
         const problems = storage.readProblems();
         const parts = [];
         if (problems.length > 0) {
@@ -153,7 +166,10 @@ export function registerTools(server, storage, sessionId) {
         return { content: [{ type: 'text', text }] };
     });
     server.tool('list_problems', 'List all problems in the current session, optionally filtered by status.', {
-        status: z.enum(['open', 'resolved', 'all']).optional().describe('Filter by status (default: all)'),
+        status: z
+            .enum(['open', 'resolved', 'all'])
+            .optional()
+            .describe('Filter by status (default: all)'),
     }, async (args) => {
         let problems = storage.readProblems();
         if (args.status && args.status !== 'all') {
@@ -174,14 +190,19 @@ export function registerTools(server, storage, sessionId) {
             return `- [${status}] ${p.problem}${summary} [id: ${p.id}]`;
         });
         return {
-            content: [{
+            content: [
+                {
                     type: 'text',
                     text: `${problems.length} problem(s):\n\n${lines.join('\n')}`,
-                }],
+                },
+            ],
         };
     });
     server.tool('search_decisions', 'Search project decisions across all sessions by keyword or tags.', {
-        query: z.string().optional().describe('Search text (matches topic, chosen option, rationale)'),
+        query: z
+            .string()
+            .optional()
+            .describe('Search text (matches topic, chosen option, rationale)'),
         tags: z.array(z.string()).optional().describe('Filter by tags'),
     }, async (args) => {
         const results = storage.searchDecisions(args.query, args.tags);

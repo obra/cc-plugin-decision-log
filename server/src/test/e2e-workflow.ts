@@ -3,13 +3,14 @@
  * Simulates a realistic debugging session where Claude is working on a project,
  * makes decisions, investigates bugs, hits compaction, and recovers context.
  */
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
-import { test, describe, before, after } from 'node:test';
+
 import assert from 'node:assert/strict';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { callTool, text, runHook, storageDir } from './helpers.js';
+import { after, before, describe, test } from 'node:test';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import { callTool, runHook, storageDir, text } from './helpers.js';
 
 describe('E2E: realistic debugging session workflow', () => {
   let client: Client;
@@ -42,7 +43,8 @@ describe('E2E: realistic debugging session workflow', () => {
         { name: 'Hono', description: 'Lightweight, edge-ready' },
       ],
       chosen: 'Express',
-      rationale: 'Existing codebase uses Express middleware, migration cost too high',
+      rationale:
+        'Existing codebase uses Express middleware, migration cost too high',
       tags: ['architecture', 'api'],
     });
 
@@ -53,7 +55,8 @@ describe('E2E: realistic debugging session workflow', () => {
         { name: 'SQLite', description: 'Zero-dependency, file-based' },
       ],
       chosen: 'SQLite',
-      rationale: 'Single server deployment, no Redis infra needed, already using better-sqlite3',
+      rationale:
+        'Single server deployment, no Redis infra needed, already using better-sqlite3',
       tags: ['architecture', 'storage'],
     });
 
@@ -65,9 +68,11 @@ describe('E2E: realistic debugging session workflow', () => {
   // Phase 2: Hit a bug, investigate
   let authProblemId: string;
   test('Phase 2: Start investigating auth bug', async () => {
-    const result = text(await callTool(client, 'open_problem', {
-      problem: 'Login endpoint returns 500 after session middleware added',
-    }));
+    const result = text(
+      await callTool(client, 'open_problem', {
+        problem: 'Login endpoint returns 500 after session middleware added',
+      }),
+    );
     authProblemId = result.match(/ID: (.+)/)![1];
 
     // First approach: check middleware order
@@ -90,9 +95,11 @@ describe('E2E: realistic debugging session workflow', () => {
   // Phase 3: Second bug appears while investigating first
   let cssProblemId: string;
   test('Phase 3: Second bug appears, open parallel problem', async () => {
-    const result = text(await callTool(client, 'open_problem', {
-      problem: 'Dashboard layout broken after Tailwind upgrade to v4',
-    }));
+    const result = text(
+      await callTool(client, 'open_problem', {
+        problem: 'Dashboard layout broken after Tailwind upgrade to v4',
+      }),
+    );
     cssProblemId = result.match(/ID: (.+)/)![1];
 
     await callTool(client, 'log_approach', {
@@ -104,7 +111,8 @@ describe('E2E: realistic debugging session workflow', () => {
 
     await callTool(client, 'close_problem', {
       problem_id: cssProblemId,
-      resolution: 'Tailwind v4 @apply syntax changed — find-and-replace across 4 files',
+      resolution:
+        'Tailwind v4 @apply syntax changed — find-and-replace across 4 files',
     });
   });
 
@@ -114,12 +122,14 @@ describe('E2E: realistic debugging session workflow', () => {
       problem_id: authProblemId,
       approach: 'Add error handler to session.save() callback',
       outcome: 'succeeded',
-      details: 'Session store was throwing because sessions table schema was wrong — missing expires column',
+      details:
+        'Session store was throwing because sessions table schema was wrong — missing expires column',
     });
 
     await callTool(client, 'close_problem', {
       problem_id: authProblemId,
-      resolution: 'Sessions table missing expires column. Migration was incomplete.',
+      resolution:
+        'Sessions table missing expires column. Migration was incomplete.',
     });
   });
 
@@ -168,13 +178,19 @@ describe('E2E: realistic debugging session workflow', () => {
 
   // Phase 7: Verify search works across decisions
   test('Phase 7: Search decisions by different criteria', async () => {
-    const archSearch = text(await callTool(client, 'search_decisions', { tags: ['architecture'] }));
+    const archSearch = text(
+      await callTool(client, 'search_decisions', { tags: ['architecture'] }),
+    );
     assert.match(archSearch, /Found 2 decision/);
 
-    const sqliteSearch = text(await callTool(client, 'search_decisions', { query: 'sqlite' }));
+    const sqliteSearch = text(
+      await callTool(client, 'search_decisions', { query: 'sqlite' }),
+    );
     assert.match(sqliteSearch, /Session storage/);
 
-    const apiSearch = text(await callTool(client, 'search_decisions', { tags: ['api'] }));
+    const apiSearch = text(
+      await callTool(client, 'search_decisions', { tags: ['api'] }),
+    );
     assert.match(apiSearch, /Found 1 decision/);
     assert.match(apiSearch, /API framework/);
   });
@@ -184,16 +200,22 @@ describe('E2E: realistic debugging session workflow', () => {
     const all = text(await callTool(client, 'list_problems', {}));
     assert.match(all, /2 problem/);
 
-    const open = text(await callTool(client, 'list_problems', { status: 'open' }));
+    const open = text(
+      await callTool(client, 'list_problems', { status: 'open' }),
+    );
     assert.match(open, /No problems found/);
 
-    const resolved = text(await callTool(client, 'list_problems', { status: 'resolved' }));
+    const resolved = text(
+      await callTool(client, 'list_problems', { status: 'resolved' }),
+    );
     assert.match(resolved, /2 problem/);
   });
 });
 
 describe('E2E: cross-session decision persistence', () => {
-  const tmpDir = fs.mkdtempSync(path.join(import.meta.dirname, '.test-e2e-cross-'));
+  const tmpDir = fs.mkdtempSync(
+    path.join(import.meta.dirname, '.test-e2e-cross-'),
+  );
 
   after(() => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
@@ -233,7 +255,9 @@ describe('E2E: cross-session decision persistence', () => {
     await client2.connect(transport2);
 
     // Search should find session 1's decision
-    const search = text(await callTool(client2, 'search_decisions', { query: 'ORM' }));
+    const search = text(
+      await callTool(client2, 'search_decisions', { query: 'ORM' }),
+    );
     assert.match(search, /ORM choice/);
     assert.match(search, /Drizzle/);
 

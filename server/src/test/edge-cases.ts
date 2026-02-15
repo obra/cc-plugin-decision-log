@@ -1,11 +1,11 @@
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
-import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
+import { createHash, randomUUID } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { createHash, randomUUID } from 'node:crypto';
-import { callTool, text as getText, runHook, storageDir, STORAGE_ROOT } from './helpers.js';
+import { after, before, describe, test } from 'node:test';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import { callTool, text as getText, runHook, STORAGE_ROOT } from './helpers.js';
 
 describe('edge cases', () => {
   let client: Client;
@@ -77,7 +77,9 @@ describe('edge cases', () => {
     assert.match(text, /Decision logged/);
 
     // Verify it's searchable
-    const search = await callTool(client, 'search_decisions', { query: 'quoted' });
+    const search = await callTool(client, 'search_decisions', {
+      query: 'quoted',
+    });
     assert.match(getText(search), /quoted/);
   });
 
@@ -127,12 +129,16 @@ describe('edge cases', () => {
     assert.match(allText, /Problem Alpha/);
     assert.match(allText, /Problem Beta/);
 
-    const openOnly = await callTool(client, 'list_problems', { status: 'open' });
+    const openOnly = await callTool(client, 'list_problems', {
+      status: 'open',
+    });
     const openText = getText(openOnly);
     assert.match(openText, /Problem Alpha/);
     assert.doesNotMatch(openText, /Problem Beta/);
 
-    const resolvedOnly = await callTool(client, 'list_problems', { status: 'resolved' });
+    const resolvedOnly = await callTool(client, 'list_problems', {
+      status: 'resolved',
+    });
     const resolvedText = getText(resolvedOnly);
     assert.doesNotMatch(resolvedText, /Problem Alpha/);
     assert.match(resolvedText, /Problem Beta/);
@@ -163,8 +169,13 @@ describe('edge cases', () => {
 });
 
 describe('multi-session hook behavior', () => {
-  const tmpProject = fs.mkdtempSync(path.join(import.meta.dirname, '.test-multi-'));
-  const projectSlug = createHash('sha256').update(tmpProject).digest('hex').slice(0, 12);
+  const tmpProject = fs.mkdtempSync(
+    path.join(import.meta.dirname, '.test-multi-'),
+  );
+  const projectSlug = createHash('sha256')
+    .update(tmpProject)
+    .digest('hex')
+    .slice(0, 12);
   const projectDir = path.join(STORAGE_ROOT, projectSlug);
 
   after(() => {
@@ -182,35 +193,73 @@ describe('multi-session hook behavior', () => {
     fs.mkdirSync(newDir, { recursive: true });
 
     // Old session
-    fs.writeFileSync(path.join(oldDir, 'metadata.json'), JSON.stringify({
-      session_id: oldSessionId, project_slug: projectSlug, cwd: tmpProject,
-      started_at: '2025-01-01T00:00:00Z',
-    }));
-    fs.writeFileSync(path.join(oldDir, 'problems.json'), JSON.stringify([{
-      id: randomUUID(), session_id: oldSessionId, problem: 'OLD PROBLEM',
-      status: 'open', created_at: '2025-01-01T00:00:00Z', approaches: [],
-    }]));
+    fs.writeFileSync(
+      path.join(oldDir, 'metadata.json'),
+      JSON.stringify({
+        session_id: oldSessionId,
+        project_slug: projectSlug,
+        cwd: tmpProject,
+        started_at: '2025-01-01T00:00:00Z',
+      }),
+    );
+    fs.writeFileSync(
+      path.join(oldDir, 'problems.json'),
+      JSON.stringify([
+        {
+          id: randomUUID(),
+          session_id: oldSessionId,
+          problem: 'OLD PROBLEM',
+          status: 'open',
+          created_at: '2025-01-01T00:00:00Z',
+          approaches: [],
+        },
+      ]),
+    );
 
     // Touch old metadata to have old mtime
     const oldTime = new Date('2025-01-01');
     fs.utimesSync(path.join(oldDir, 'metadata.json'), oldTime, oldTime);
 
     // New session
-    fs.writeFileSync(path.join(newDir, 'metadata.json'), JSON.stringify({
-      session_id: newSessionId, project_slug: projectSlug, cwd: tmpProject,
-      started_at: new Date().toISOString(),
-    }));
-    fs.writeFileSync(path.join(newDir, 'problems.json'), JSON.stringify([{
-      id: randomUUID(), session_id: newSessionId, problem: 'NEW PROBLEM',
-      status: 'open', created_at: new Date().toISOString(), approaches: [],
-    }]));
+    fs.writeFileSync(
+      path.join(newDir, 'metadata.json'),
+      JSON.stringify({
+        session_id: newSessionId,
+        project_slug: projectSlug,
+        cwd: tmpProject,
+        started_at: new Date().toISOString(),
+      }),
+    );
+    fs.writeFileSync(
+      path.join(newDir, 'problems.json'),
+      JSON.stringify([
+        {
+          id: randomUUID(),
+          session_id: newSessionId,
+          problem: 'NEW PROBLEM',
+          status: 'open',
+          created_at: new Date().toISOString(),
+          approaches: [],
+        },
+      ]),
+    );
 
     // Decisions
-    fs.writeFileSync(path.join(projectDir, 'decisions.json'), JSON.stringify([{
-      id: randomUUID(), timestamp: new Date().toISOString(), session_id: newSessionId,
-      topic: 'New decision', options: [], chosen: 'Yes', rationale: 'Because',
-      tags: [],
-    }]));
+    fs.writeFileSync(
+      path.join(projectDir, 'decisions.json'),
+      JSON.stringify([
+        {
+          id: randomUUID(),
+          timestamp: new Date().toISOString(),
+          session_id: newSessionId,
+          topic: 'New decision',
+          options: [],
+          chosen: 'Yes',
+          rationale: 'Because',
+          tags: [],
+        },
+      ]),
+    );
 
     const output = runHook('pre-compact.sh', { cwd: tmpProject });
     const parsed = JSON.parse(output);

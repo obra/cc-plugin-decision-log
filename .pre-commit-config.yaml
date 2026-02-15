@@ -1,0 +1,16 @@
+repos:
+  - repo: local
+    hooks:
+      - id: biome
+        name: biome check
+        entry: npx biome check --write --no-errors-on-unmatched
+        language: system
+        types: [ts]
+        pass_filenames: true
+
+      - id: tsc-rebuild
+        name: rebuild dist
+        entry: bash -c 'cd server && npx tsc && git add dist/'
+        language: system
+        files: ^server/src/
+        pass_filenames: false

@@ -24,12 +24,13 @@ function findLatestSessionDir(sessionsDir) {
         try {
             const stat = fs.statSync(metaPath);
             if (!latest || stat.mtimeMs > latest.mtime) {
-                latest = { dir: path.join(sessionsDir, entry.name), mtime: stat.mtimeMs };
+                latest = {
+                    dir: path.join(sessionsDir, entry.name),
+                    mtime: stat.mtimeMs,
+                };
             }
         }
-        catch {
-            continue;
-        }
+        catch { }
     }
     return latest?.dir ?? null;
 }
@@ -94,7 +95,7 @@ export function runPreCompact() {
                             for (const a of p.approaches) {
                                 const label = a.outcome === 'failed' ? 'FAILED' : 'SUCCEEDED';
                                 const details = a.details.length > 120
-                                    ? a.details.slice(0, 120) + '...'
+                                    ? `${a.details.slice(0, 120)}...`
                                     : a.details;
                                 lines.push(`  - ${label}: ${a.approach} — ${details}`);
                             }
@@ -108,7 +109,9 @@ export function runPreCompact() {
                         const failCount = Array.isArray(p.approaches)
                             ? p.approaches.filter((a) => a.outcome === 'failed').length
                             : 0;
-                        const suffix = failCount > 0 ? ` (${failCount} failed approach${failCount > 1 ? 'es' : ''})` : '';
+                        const suffix = failCount > 0
+                            ? ` (${failCount} failed approach${failCount > 1 ? 'es' : ''})`
+                            : '';
                         lines.push(`- ${p.problem} → ${p.resolution || 'resolved'}${suffix}`);
                     }
                     lines.push('');

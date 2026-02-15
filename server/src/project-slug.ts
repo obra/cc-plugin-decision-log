@@ -1,5 +1,5 @@
-import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import * as path from 'node:path';
 
 function shortHash(input: string): string {
@@ -9,7 +9,7 @@ function shortHash(input: string): string {
 export const STORAGE_ROOT = path.join(
   process.env.HOME || process.env.USERPROFILE || '/tmp',
   '.claude',
-  'decision-log'
+  'decision-log',
 );
 
 export function getProjectSlug(cwd: string): string {

@@ -1,6 +1,6 @@
-import { z } from 'zod';
 import { randomUUID } from 'node:crypto';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { z } from 'zod';
 import type { Storage } from './storage.js';
 import type { Decision, Problem } from './types.js';
 
@@ -9,7 +9,11 @@ const OptionSchema = z.object({
   description: z.string(),
 });
 
-export function registerTools(server: McpServer, storage: Storage, sessionId: string) {
+export function registerTools(
+  server: McpServer,
+  storage: Storage,
+  sessionId: string,
+) {
   server.tool(
     'log_decision',
     'Record a decision with options considered and rationale. Use this when you choose between approaches.',
@@ -18,7 +22,10 @@ export function registerTools(server: McpServer, storage: Storage, sessionId: st
       options: z.array(OptionSchema).describe('Options that were considered'),
       chosen: z.string().describe('Which option was chosen'),
       rationale: z.string().describe('Why this option was chosen'),
-      tags: z.array(z.string()).optional().describe('Tags for categorization (e.g. "auth", "architecture")'),
+      tags: z
+        .array(z.string())
+        .optional()
+        .describe('Tags for categorization (e.g. "auth", "architecture")'),
     },
     async (args) => {
       const decision: Decision = {
@@ -40,14 +47,16 @@ export function registerTools(server: McpServer, storage: Storage, sessionId: st
           },
         ],
       };
-    }
+    },
   );
 
   server.tool(
     'open_problem',
     'Begin tracking approaches to a problem. After calling this, use log_approach for EVERY approach you try — this prevents retrying dead ends after compaction.',
     {
-      problem: z.string().describe('Description of the problem being investigated'),
+      problem: z
+        .string()
+        .describe('Description of the problem being investigated'),
     },
     async (args) => {
       const problem: Problem = {
@@ -67,7 +76,7 @@ export function registerTools(server: McpServer, storage: Storage, sessionId: st
           },
         ],
       };
-    }
+    },
   );
 
   server.tool(
@@ -76,8 +85,12 @@ export function registerTools(server: McpServer, storage: Storage, sessionId: st
     {
       problem_id: z.string().describe('ID from open_problem'),
       approach: z.string().describe('What approach was tried'),
-      outcome: z.enum(['failed', 'succeeded']).describe('Whether the approach failed or succeeded'),
-      details: z.string().describe('What happened — error messages, why it failed, what worked'),
+      outcome: z
+        .enum(['failed', 'succeeded'])
+        .describe('Whether the approach failed or succeeded'),
+      details: z
+        .string()
+        .describe('What happened — error messages, why it failed, what worked'),
     },
     async (args) => {
       const p = storage.updateProblem(args.problem_id, (p) => {
@@ -108,7 +121,7 @@ export function registerTools(server: McpServer, storage: Storage, sessionId: st
           },
         ],
       };
-    }
+    },
   );
 
   server.tool(
@@ -116,7 +129,9 @@ export function registerTools(server: McpServer, storage: Storage, sessionId: st
     'Mark a problem as solved. Summarize what finally worked and why.',
     {
       problem_id: z.string().describe('ID from open_problem'),
-      resolution: z.string().describe('Summary of the resolution — what finally worked and why'),
+      resolution: z
+        .string()
+        .describe('Summary of the resolution — what finally worked and why'),
     },
     async (args) => {
       const p = storage.updateProblem(args.problem_id, (p) => {
@@ -142,7 +157,7 @@ export function registerTools(server: McpServer, storage: Storage, sessionId: st
           },
         ],
       };
-    }
+    },
   );
 
   server.tool(
@@ -150,9 +165,9 @@ export function registerTools(server: McpServer, storage: Storage, sessionId: st
     'Get all session state — decisions and problems (open and resolved). Use after context compaction to reload working memory.',
     {},
     async () => {
-      const decisions = storage.readDecisions().filter(
-        (d) => d.session_id === sessionId
-      );
+      const decisions = storage
+        .readDecisions()
+        .filter((d) => d.session_id === sessionId);
       const problems = storage.readProblems();
 
       const parts: string[] = [];
@@ -185,7 +200,7 @@ export function registerTools(server: McpServer, storage: Storage, sessionId: st
       const otherDecisions = allDecisions.length - decisions.length;
       if (otherDecisions > 0) {
         parts.push(
-          `\n${otherDecisions} additional project decision(s) from prior sessions. Use search_decisions to query.`
+          `\n${otherDecisions} additional project decision(s) from prior sessions. Use search_decisions to query.`,
         );
       }
 
@@ -195,14 +210,17 @@ export function registerTools(server: McpServer, storage: Storage, sessionId: st
           : 'No decisions or problems recorded in this session yet.';
 
       return { content: [{ type: 'text' as const, text }] };
-    }
+    },
   );
 
   server.tool(
     'list_problems',
     'List all problems in the current session, optionally filtered by status.',
     {
-      status: z.enum(['open', 'resolved', 'all']).optional().describe('Filter by status (default: all)'),
+      status: z
+        .enum(['open', 'resolved', 'all'])
+        .optional()
+        .describe('Filter by status (default: all)'),
     },
     async (args) => {
       let problems = storage.readProblems();
@@ -219,7 +237,9 @@ export function registerTools(server: McpServer, storage: Storage, sessionId: st
       const lines = problems.map((p) => {
         const status = p.status === 'open' ? 'OPEN' : 'RESOLVED';
         const approachCount = p.approaches.length;
-        const failCount = p.approaches.filter((a) => a.outcome === 'failed').length;
+        const failCount = p.approaches.filter(
+          (a) => a.outcome === 'failed',
+        ).length;
         const summary = p.resolution
           ? ` → ${p.resolution}`
           : ` (${approachCount} approach${approachCount !== 1 ? 'es' : ''}, ${failCount} failed)`;
@@ -227,19 +247,24 @@ export function registerTools(server: McpServer, storage: Storage, sessionId: st
       });
 
       return {
-        content: [{
-          type: 'text' as const,
-          text: `${problems.length} problem(s):\n\n${lines.join('\n')}`,
-        }],
+        content: [
+          {
+            type: 'text' as const,
+            text: `${problems.length} problem(s):\n\n${lines.join('\n')}`,
+          },
+        ],
       };
-    }
+    },
   );
 
   server.tool(
     'search_decisions',
     'Search project decisions across all sessions by keyword or tags.',
     {
-      query: z.string().optional().describe('Search text (matches topic, chosen option, rationale)'),
+      query: z
+        .string()
+        .optional()
+        .describe('Search text (matches topic, chosen option, rationale)'),
       tags: z.array(z.string()).optional().describe('Filter by tags'),
     },
     async (args) => {
@@ -253,7 +278,7 @@ export function registerTools(server: McpServer, storage: Storage, sessionId: st
       }
       const lines = results.map(
         (d) =>
-          `- [${d.timestamp.slice(0, 10)}] **${d.topic}**: ${d.chosen} — ${d.rationale}${d.tags.length ? ` (tags: ${d.tags.join(', ')})` : ''}`
+          `- [${d.timestamp.slice(0, 10)}] **${d.topic}**: ${d.chosen} — ${d.rationale}${d.tags.length ? ` (tags: ${d.tags.join(', ')})` : ''}`,
       );
       return {
         content: [
@@ -263,6 +288,6 @@ export function registerTools(server: McpServer, storage: Storage, sessionId: st
           },
         ],
       };
-    }
+    },
   );
 }

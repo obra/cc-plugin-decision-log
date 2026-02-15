@@ -1,7 +1,7 @@
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import * as path from 'node:path';
-import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import * as path from 'node:path';
+import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
 
 const STORAGE_ROOT = path.join(process.env.HOME!, '.claude', 'decision-log');
 const PLUGIN_ROOT = path.resolve(import.meta.dirname, '..', '..', '..');
@@ -13,7 +13,11 @@ export function storageDir(tmpDir: string): string {
   return path.join(STORAGE_ROOT, slug);
 }
 
-export function callTool(client: Client, name: string, args: Record<string, unknown> = {}) {
+export function callTool(
+  client: Client,
+  name: string,
+  args: Record<string, unknown> = {},
+) {
   return client.callTool({ name, arguments: args });
 }
 

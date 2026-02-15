@@ -1,5 +1,5 @@
-import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import * as path from 'node:path';
 function shortHash(input) {
     return createHash('sha256').update(input).digest('hex').slice(0, 12);

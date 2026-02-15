@@ -1,10 +1,10 @@
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
-import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { callTool, text, storageDir } from './helpers.js';
+import { after, before, describe, test } from 'node:test';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import { callTool, storageDir, text } from './helpers.js';
 const tmpDir = fs.mkdtempSync(path.join(import.meta.dirname, '.test-project-'));
 let client;
 let transport;
@@ -59,7 +59,9 @@ describe('decision-log MCP server', () => {
         assert.match(result, /Database choice/);
     });
     test('search_decisions returns empty for non-match', async () => {
-        const result = text(await callTool(client, 'search_decisions', { query: 'nonexistent-xyzzy' }));
+        const result = text(await callTool(client, 'search_decisions', {
+            query: 'nonexistent-xyzzy',
+        }));
         assert.match(result, /No matching decisions/);
     });
     let problemId;

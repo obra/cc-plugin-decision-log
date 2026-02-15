@@ -66,7 +66,7 @@ export class Storage {
           d.options.some(
             (o) =>
               o.name.toLowerCase().includes(q) ||
-              o.description.toLowerCase().includes(q)
+              o.description.toLowerCase().includes(q),
           );
         if (!matches) return false;
       }
@@ -85,19 +85,14 @@ export class Storage {
 
   readProblems(): Problem[] {
     try {
-      return JSON.parse(
-        fs.readFileSync(this.problemsPath(), 'utf-8')
-      );
+      return JSON.parse(fs.readFileSync(this.problemsPath(), 'utf-8'));
     } catch {
       return [];
     }
   }
 
   private writeProblems(problems: Problem[]): void {
-    fs.writeFileSync(
-      this.problemsPath(),
-      JSON.stringify(problems, null, 2)
-    );
+    fs.writeFileSync(this.problemsPath(), JSON.stringify(problems, null, 2));
   }
 
   addProblem(problem: Problem): void {

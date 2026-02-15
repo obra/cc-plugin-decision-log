@@ -3,13 +3,13 @@
  * Simulates a realistic debugging session where Claude is working on a project,
  * makes decisions, investigates bugs, hits compaction, and recovers context.
  */
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
-import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { callTool, text, runHook, storageDir } from './helpers.js';
+import { after, before, describe, test } from 'node:test';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import { callTool, runHook, storageDir, text } from './helpers.js';
 describe('E2E: realistic debugging session workflow', () => {
     let client;
     let transport;

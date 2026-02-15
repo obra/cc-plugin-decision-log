@@ -17,7 +17,11 @@ function readInput(): HookInput {
   }
 }
 
-function output(result: { continue: boolean; suppressOutput: boolean; systemMessage: string }) {
+function output(result: {
+  continue: boolean;
+  suppressOutput: boolean;
+  systemMessage: string;
+}) {
   process.stdout.write(JSON.stringify(result));
 }
 
@@ -31,11 +35,12 @@ function findLatestSessionDir(sessionsDir: string): string | null {
     try {
       const stat = fs.statSync(metaPath);
       if (!latest || stat.mtimeMs > latest.mtime) {
-        latest = { dir: path.join(sessionsDir, entry.name), mtime: stat.mtimeMs };
+        latest = {
+          dir: path.join(sessionsDir, entry.name),
+          mtime: stat.mtimeMs,
+        };
       }
-    } catch {
-      continue;
-    }
+    } catch {}
   }
   return latest?.dir ?? null;
 }
@@ -74,13 +79,17 @@ export function runPreCompact() {
 
   if (!fs.existsSync(projectDir)) process.exit(0);
 
-  const latestSessionDir = findLatestSessionDir(path.join(projectDir, 'sessions'));
+  const latestSessionDir = findLatestSessionDir(
+    path.join(projectDir, 'sessions'),
+  );
   if (!latestSessionDir) process.exit(0);
 
   // Read session metadata for session_id
   let sessionId = '';
   try {
-    const meta = JSON.parse(fs.readFileSync(path.join(latestSessionDir, 'metadata.json'), 'utf-8'));
+    const meta = JSON.parse(
+      fs.readFileSync(path.join(latestSessionDir, 'metadata.json'), 'utf-8'),
+    );
     sessionId = meta.session_id || '';
   } catch {
     // continue without session_id filtering
@@ -104,9 +113,10 @@ export function runPreCompact() {
             if (Array.isArray(p.approaches)) {
               for (const a of p.approaches) {
                 const label = a.outcome === 'failed' ? 'FAILED' : 'SUCCEEDED';
-                const details = a.details.length > 120
-                  ? a.details.slice(0, 120) + '...'
-                  : a.details;
+                const details =
+                  a.details.length > 120
+                    ? `${a.details.slice(0, 120)}...`
+                    : a.details;
                 lines.push(`  - ${label}: ${a.approach} — ${details}`);
               }
             }
@@ -120,8 +130,13 @@ export function runPreCompact() {
             const failCount = Array.isArray(p.approaches)
               ? p.approaches.filter((a: any) => a.outcome === 'failed').length
               : 0;
-            const suffix = failCount > 0 ? ` (${failCount} failed approach${failCount > 1 ? 'es' : ''})` : '';
-            lines.push(`- ${p.problem} → ${p.resolution || 'resolved'}${suffix}`);
+            const suffix =
+              failCount > 0
+                ? ` (${failCount} failed approach${failCount > 1 ? 'es' : ''})`
+                : '';
+            lines.push(
+              `- ${p.problem} → ${p.resolution || 'resolved'}${suffix}`,
+            );
           }
           lines.push('');
         }
@@ -155,7 +170,9 @@ export function runPreCompact() {
 
         const other = totalDecCount - sessionDecCount;
         if (other > 0) {
-          lines.push(`${other} additional project decision(s) from prior sessions available via search_decisions.`);
+          lines.push(
+            `${other} additional project decision(s) from prior sessions available via search_decisions.`,
+          );
         }
       }
     } catch {
