@@ -1,0 +1,7 @@
+{
+  "session-memory": {
+    "command": "node",
+    "args": ["${CLAUDE_PLUGIN_ROOT}/server/dist/index.js"],
+    "env": {}
+  }
+}

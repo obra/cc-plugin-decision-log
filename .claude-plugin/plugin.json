@@ -1,0 +1,10 @@
+{
+  "name": "session-memory",
+  "version": "0.1.0",
+  "description": "Structured session memory — logs decisions and investigations to survive context compaction",
+  "author": {
+    "name": "Prime Radiant",
+    "email": "eng@primeradiant.ai"
+  },
+  "license": "UNLICENSED"
+}
