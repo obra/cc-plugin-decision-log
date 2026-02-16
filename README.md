@@ -1,5 +1,7 @@
 # decision-log
 
+> **Status: Experimental.** This plugin has an automated test suite but has barely been tested in real Claude Code sessions. Expect rough edges.
+
 A Claude Code plugin that logs decisions and problem-solving approaches to disk so they survive context compaction.
 
 ## Why
