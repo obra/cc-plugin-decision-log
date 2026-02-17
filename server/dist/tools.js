@@ -5,7 +5,7 @@ const OptionSchema = z.object({
     description: z.string(),
 });
 export function registerTools(server, storage, sessionId) {
-    server.tool('log_decision', 'Record a decision with options considered and rationale. Use this when you choose between approaches.', {
+    server.tool('log_decision', 'Record a project-level decision with options considered and rationale. Use this when you choose between approaches, pick a library, settle an architectural question, or make any choice that future sessions should know about. Decisions persist across sessions.', {
         topic: z.string().describe('What the decision is about'),
         options: z.array(OptionSchema).describe('Options that were considered'),
         chosen: z.string().describe('Which option was chosen'),
@@ -35,7 +35,7 @@ export function registerTools(server, storage, sessionId) {
             ],
         };
     });
-    server.tool('open_problem', 'Begin tracking approaches to a problem. After calling this, use log_approach for EVERY approach you try — this prevents retrying dead ends after compaction.', {
+    server.tool('open_problem', 'Begin tracking approaches to a problem. Use this when you start debugging, investigating a failure, or working through a non-trivial issue. After opening a problem, log every approach you try with the decision-log log_approach tool — this prevents retrying dead ends after context compaction.', {
         problem: z
             .string()
             .describe('Description of the problem being investigated'),
@@ -58,8 +58,8 @@ export function registerTools(server, storage, sessionId) {
             ],
         };
     });
-    server.tool('log_approach', 'Record a failed or successful approach to an open problem. Call this after each attempt, before trying the next one. Logging failures is critical — they prevent wasted effort if context gets compacted.', {
-        problem_id: z.string().describe('ID from open_problem'),
+    server.tool('log_approach', 'Record a failed or successful approach to an open problem. Call this after each attempt, before trying the next one. Logging failures is critical — they prevent retrying dead ends if context gets compacted. Include error messages, stack traces, and the specific reason for failure.', {
+        problem_id: z.string().describe('ID returned by open_problem'),
         approach: z.string().describe('What approach was tried'),
         outcome: z
             .enum(['failed', 'succeeded'])
@@ -97,8 +97,8 @@ export function registerTools(server, storage, sessionId) {
             ],
         };
     });
-    server.tool('close_problem', 'Mark a problem as solved. Summarize what finally worked and why.', {
-        problem_id: z.string().describe('ID from open_problem'),
+    server.tool('close_problem', 'Mark a problem as solved. Use this when you find the root cause or a working solution. Summarize what finally worked and why.', {
+        problem_id: z.string().describe('ID returned by open_problem'),
         resolution: z
             .string()
             .describe('Summary of the resolution — what finally worked and why'),
@@ -127,7 +127,7 @@ export function registerTools(server, storage, sessionId) {
             ],
         };
     });
-    server.tool('get_context', 'Get all session state — decisions and problems (open and resolved). Use after context compaction to reload working memory.', {}, async () => {
+    server.tool('get_context', 'Reload all session state — decisions, open problems with full approach history, and resolved problems. Call this after context compaction to restore your working memory. The PreCompact hook injects a summary automatically, but this tool gives you the complete picture.', {}, async () => {
         const decisions = storage
             .readDecisions()
             .filter((d) => d.session_id === sessionId);
@@ -158,14 +158,14 @@ export function registerTools(server, storage, sessionId) {
         const allDecisions = storage.readDecisions();
         const otherDecisions = allDecisions.length - decisions.length;
         if (otherDecisions > 0) {
-            parts.push(`\n${otherDecisions} additional project decision(s) from prior sessions. Use search_decisions to query.`);
+            parts.push(`\n${otherDecisions} additional project decision(s) from prior sessions. Search them before making overlapping decisions.`);
         }
         const text = parts.length > 0
             ? parts.join('\n')
             : 'No decisions or problems recorded in this session yet.';
         return { content: [{ type: 'text', text }] };
     });
-    server.tool('list_problems', 'List all problems in the current session, optionally filtered by status.', {
+    server.tool('list_problems', 'List all problems in the current session, optionally filtered by status. Use this to check what problems are still open before starting new work or to get problem IDs.', {
         status: z
             .enum(['open', 'resolved', 'all'])
             .optional()
@@ -198,7 +198,7 @@ export function registerTools(server, storage, sessionId) {
             ],
         };
     });
-    server.tool('search_decisions', 'Search project decisions across all sessions by keyword or tags.', {
+    server.tool('search_decisions', 'Search project decisions across all sessions by keyword or tags. Use this before making a decision that might overlap with prior work, or when the SessionStart hook tells you prior decisions exist.', {
         query: z
             .string()
             .optional()

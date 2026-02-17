@@ -1,18 +1,23 @@
 import assert from 'node:assert/strict';
 import * as fs from 'node:fs';
+import * as os from 'node:os';
 import * as path from 'node:path';
 import { after, before, describe, test } from 'node:test';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { callTool, storageDir, text } from './helpers.js';
 
-const tmpDir = fs.mkdtempSync(path.join(import.meta.dirname, '.test-project-'));
+const tmpDir = fs.realpathSync(
+  fs.mkdtempSync(path.join(os.tmpdir(), '.test-project-')),
+);
 
 let client: Client;
 let transport: StdioClientTransport;
 
 describe('decision-log MCP server', () => {
   before(async () => {
+    // Clean up stale storage from prior interrupted runs
+    fs.rmSync(storageDir(tmpDir), { recursive: true, force: true });
     transport = new StdioClientTransport({
       command: 'node',
       args: [path.resolve(import.meta.dirname, '..', 'index.js')],

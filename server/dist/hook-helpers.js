@@ -50,7 +50,7 @@ export function runSessionStart() {
         output({
             continue: true,
             suppressOutput: true,
-            systemMessage: `Decision log: ${decisions.length} project decision(s) on record from prior sessions. Use search_decisions to query history.`,
+            systemMessage: `Decision log: ${decisions.length} project decision(s) on record from prior sessions. Search them before re-deciding something that may already be settled.`,
         });
     }
     catch {
@@ -144,7 +144,7 @@ export function runPreCompact() {
                 }
                 const other = totalDecCount - sessionDecCount;
                 if (other > 0) {
-                    lines.push(`${other} additional project decision(s) from prior sessions available via search_decisions.`);
+                    lines.push(`${other} additional project decision(s) from prior sessions. Search them before making overlapping decisions.`);
                 }
             }
         }
@@ -155,7 +155,7 @@ export function runPreCompact() {
     if (lines.length === 0)
         process.exit(0);
     const message = [
-        'DECISION LOG (preserved through compaction) — use get_context for full details.',
+        'DECISION LOG (preserved through compaction) — call the decision-log get_context tool to reload full details.',
         '',
         ...lines,
     ].join('\n');

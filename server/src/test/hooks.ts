@@ -1,12 +1,13 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import * as fs from 'node:fs';
+import * as os from 'node:os';
 import * as path from 'node:path';
 import { after, before, describe, test } from 'node:test';
 import { runHook, storageDir } from './helpers.js';
 
-const tmpProject = fs.mkdtempSync(
-  path.join(import.meta.dirname, '.test-hook-project-'),
+const tmpProject = fs.realpathSync(
+  fs.mkdtempSync(path.join(os.tmpdir(), '.test-hook-project-')),
 );
 const projectDir = storageDir(tmpProject);
 const sessionId = randomUUID();

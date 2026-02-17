@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash, randomUUID } from 'node:crypto';
 import * as fs from 'node:fs';
+import * as os from 'node:os';
 import * as path from 'node:path';
 import { after, before, describe, test } from 'node:test';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
@@ -9,8 +10,11 @@ import { callTool, text as getText, runHook, STORAGE_ROOT } from './helpers.js';
 describe('edge cases', () => {
     let client;
     let transport;
-    const tmpDir = fs.mkdtempSync(path.join(import.meta.dirname, '.test-edge-'));
+    const tmpDir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), '.test-edge-')));
     before(async () => {
+        // Clean up stale storage from prior interrupted runs
+        const slug = createHash('sha256').update(tmpDir).digest('hex').slice(0, 12);
+        fs.rmSync(path.join(STORAGE_ROOT, slug), { recursive: true, force: true });
         transport = new StdioClientTransport({
             command: 'node',
             args: [path.resolve(import.meta.dirname, '..', 'index.js')],
@@ -147,7 +151,7 @@ describe('edge cases', () => {
     });
 });
 describe('multi-session hook behavior', () => {
-    const tmpProject = fs.mkdtempSync(path.join(import.meta.dirname, '.test-multi-'));
+    const tmpProject = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), '.test-multi-')));
     const projectSlug = createHash('sha256')
         .update(tmpProject)
         .digest('hex')

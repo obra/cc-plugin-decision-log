@@ -6,6 +6,7 @@
 
 import assert from 'node:assert/strict';
 import * as fs from 'node:fs';
+import * as os from 'node:os';
 import * as path from 'node:path';
 import { after, before, describe, test } from 'node:test';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
@@ -15,9 +16,13 @@ import { callTool, runHook, storageDir, text } from './helpers.js';
 describe('E2E: realistic debugging session workflow', () => {
   let client: Client;
   let transport: StdioClientTransport;
-  const tmpDir = fs.mkdtempSync(path.join(import.meta.dirname, '.test-e2e-'));
+  const tmpDir = fs.realpathSync(
+    fs.mkdtempSync(path.join(os.tmpdir(), '.test-e2e-')),
+  );
 
   before(async () => {
+    // Clean up stale storage from prior interrupted runs
+    fs.rmSync(storageDir(tmpDir), { recursive: true, force: true });
     transport = new StdioClientTransport({
       command: 'node',
       args: [path.resolve(import.meta.dirname, '..', 'index.js')],
@@ -213,9 +218,14 @@ describe('E2E: realistic debugging session workflow', () => {
 });
 
 describe('E2E: cross-session decision persistence', () => {
-  const tmpDir = fs.mkdtempSync(
-    path.join(import.meta.dirname, '.test-e2e-cross-'),
+  const tmpDir = fs.realpathSync(
+    fs.mkdtempSync(path.join(os.tmpdir(), '.test-e2e-cross-')),
   );
+
+  before(() => {
+    // Clean up stale storage from prior interrupted runs
+    fs.rmSync(storageDir(tmpDir), { recursive: true, force: true });
+  });
 
   after(() => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
