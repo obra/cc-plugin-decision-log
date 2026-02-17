@@ -6,8 +6,6 @@ import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
 const STORAGE_ROOT = path.join(process.env.HOME!, '.claude', 'decision-log');
 const PLUGIN_ROOT = path.resolve(import.meta.dirname, '..', '..', '..');
 
-export { STORAGE_ROOT, PLUGIN_ROOT };
-
 export function storageDir(tmpDir: string): string {
   const slug = createHash('sha256').update(tmpDir).digest('hex').slice(0, 12);
   return path.join(STORAGE_ROOT, slug);

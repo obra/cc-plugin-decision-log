@@ -1,7 +1,4 @@
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
-declare const STORAGE_ROOT: string;
-declare const PLUGIN_ROOT: string;
-export { STORAGE_ROOT, PLUGIN_ROOT };
 export declare function storageDir(tmpDir: string): string;
 export declare function callTool(client: Client, name: string, args?: Record<string, unknown>): Promise<{
     [x: string]: unknown;

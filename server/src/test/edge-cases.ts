@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
-import { createHash, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { after, before, describe, test } from 'node:test';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
-import { callTool, text as getText, runHook, STORAGE_ROOT } from './helpers.js';
+import { callTool, text as getText, runHook, storageDir } from './helpers.js';
 
 describe('edge cases', () => {
   let client: Client;
@@ -17,8 +17,7 @@ describe('edge cases', () => {
 
   before(async () => {
     // Clean up stale storage from prior interrupted runs
-    const slug = createHash('sha256').update(tmpDir).digest('hex').slice(0, 12);
-    fs.rmSync(path.join(STORAGE_ROOT, slug), { recursive: true, force: true });
+    fs.rmSync(storageDir(tmpDir), { recursive: true, force: true });
     transport = new StdioClientTransport({
       command: 'node',
       args: [path.resolve(import.meta.dirname, '..', 'index.js')],
@@ -31,10 +30,7 @@ describe('edge cases', () => {
   after(async () => {
     await client.close();
     fs.rmSync(tmpDir, { recursive: true, force: true });
-    // Clean up storage for this test project
-    const slug = createHash('sha256').update(tmpDir).digest('hex').slice(0, 12);
-    const projectDir = path.join(STORAGE_ROOT, slug);
-    fs.rmSync(projectDir, { recursive: true, force: true });
+    fs.rmSync(storageDir(tmpDir), { recursive: true, force: true });
   });
 
   test('get_context with no data returns empty message', async () => {
@@ -178,11 +174,7 @@ describe('multi-session hook behavior', () => {
   const tmpProject = fs.realpathSync(
     fs.mkdtempSync(path.join(os.tmpdir(), '.test-multi-')),
   );
-  const projectSlug = createHash('sha256')
-    .update(tmpProject)
-    .digest('hex')
-    .slice(0, 12);
-  const projectDir = path.join(STORAGE_ROOT, projectSlug);
+  const projectDir = storageDir(tmpProject);
 
   after(() => {
     fs.rmSync(tmpProject, { recursive: true, force: true });
@@ -203,7 +195,7 @@ describe('multi-session hook behavior', () => {
       path.join(oldDir, 'metadata.json'),
       JSON.stringify({
         session_id: oldSessionId,
-        project_slug: projectSlug,
+        project_slug: 'test',
         cwd: tmpProject,
         started_at: '2025-01-01T00:00:00Z',
       }),
@@ -231,7 +223,7 @@ describe('multi-session hook behavior', () => {
       path.join(newDir, 'metadata.json'),
       JSON.stringify({
         session_id: newSessionId,
-        project_slug: projectSlug,
+        project_slug: 'test',
         cwd: tmpProject,
         started_at: new Date().toISOString(),
       }),
